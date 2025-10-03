@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Limpieza - Piso 1</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-card .number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-card .label {
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .records-container {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .record-card {
+            background: #f8f9fa;
+            border-left: 5px solid #667eea;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .record-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .record-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .record-date {
+            font-weight: bold;
+            color: #333;
+            font-size: 1.1em;
+        }
+        
+        .record-times {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .time-badge {
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+        
+        .duration-badge {
+            background: #28a745;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+        
+        .record-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .info-item {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+        }
+        
+        .info-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        
+        .info-value {
+            color: #333;
+            font-size: 1em;
+        }
+        
+        .work-done {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+        
+        .work-done ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .work-done li {
+            padding: 5px 0;
+            color: #333;
+        }
+        
+        .work-done li:before {
+            content: "✓ ";
+            color: #28a745;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 1.2em;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-size: 1.1em;
+        }
+        
+        .last-update {
+            text-align: center;
+            color: #666;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.5em;
+            }
+            
+            .record-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏢 CONTROL DE LIMPIEZA</h1>
+            <div class="subtitle">Piso 1 - Últimos 30 Movimientos</div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="number" id="totalRecords">0</div>
+                <div class="label">Registros</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="todayRecords">0</div>
+                <div class="label">Hoy</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="avgDuration">0</div>
+                <div class="label">Duración Promedio (min)</div>
+            </div>
+        </div>
+        
+        <div class="records-container">
+            <div id="recordsList" class="loading">
+                Cargando datos...
+            </div>
+            <div class="last-update" id="lastUpdate"></div>
+        </div>
+    </div>
+
+    <script>
+        // URL del Google Sheet publicado como CSV
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmUpcN4q6d7okxjnMlUuqmzh6rVRJ-rt9Eq7IW-HnK20Vqp2JZ6MKd3_tTaPFPLQ27XgoiZGu4w-HS/pub?gid=1532232990&single=true&output=csv';
+        
+        // Configuración para Piso 1
+        const PISO = 'Piso 1';
+        
+        function calculateDuration(startTime, endTime) {
+            if (!startTime || !endTime) return 'N/A';
+            
+            const [startHour, startMin] = startTime.split(':').map(n => parseInt(n));
+            const [endHour, endMin] = endTime.split(':').map(n => parseInt(n));
+            
+            let totalMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+            
+            if (totalMinutes < 0) totalMinutes += 24 * 60;
+            
+            return totalMinutes;
+        }
+        
+        function formatWorkDone(workString) {
+            if (!workString) return [];
+            return workString.split(',').map(item => item.trim()).filter(item => item);
+        }
+        
+        async function loadData() {
+            try {
+                const response = await fetch(SHEET_URL);
+                const csvText = await response.text();
+                
+                const lines = csvText.split('\n');
+                const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                
+                // Encuentra los índices de las columnas
+                const pisoIndex = headers.findIndex(h => h.includes('piso'));
+                const nombreIndex = headers.findIndex(h => h.includes('nombre'));
+                const horaInicioIndex = headers.findIndex(h => h.includes('empezó'));
+                const horaFinIndex = headers.findIndex(h => h.includes('TERMINÓ'));
+                const trabajoIndex = headers.findIndex(h => h.includes('TODO trabajo'));
+                const fechaIndex = headers.findIndex(h => h.includes('Fecha actual'));
+                const marcaTemporalIndex = 0;
+                
+                const records = [];
+                
+                for (let i = 1; i < lines.length; i++) {
+                    if (!lines[i].trim()) continue;
+                    
+                    const cells = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
+                    
+                    if (cells[pisoIndex] === PISO) {
+                        records.push({
+                            timestamp: cells[marcaTemporalIndex],
+                            fecha: cells[fechaIndex],
+                            nombre: cells[nombreIndex],
+                            piso: cells[pisoIndex],
+                            horaInicio: cells[horaInicioIndex],
+                            horaFin: cells[horaFinIndex],
+                            trabajo: cells[trabajoIndex],
+                            duracion: calculateDuration(cells[horaInicioIndex], cells[horaFinIndex])
+                        });
+                    }
+                }
+                
+                // Tomar solo los últimos 30
+                const last30 = records.slice(-30).reverse();
+                
+                displayRecords(last30);
+                updateStats(last30);
+                
+            } catch (error) {
+                console.error('Error cargando datos:', error);
+                document.getElementById('recordsList').innerHTML = 
+                    '<div class="no-data">Error al cargar los datos. Verifica la URL del Sheet.</div>';
+            }
+        }
+        
+        function displayRecords(records) {
+            const container = document.getElementById('recordsList');
+            
+            if (records.length === 0) {
+                container.innerHTML = '<div class="no-data">No hay registros para este piso.</div>';
+                return;
+            }
+            
+            let html = '';
+            
+            records.forEach(record => {
+                const trabajos = formatWorkDone(record.trabajo);
+                
+                html += `
+                    <div class="record-card">
+                        <div class="record-header">
+                            <div class="record-date">📅 ${record.fecha}</div>
+                            <div class="record-times">
+                                <span class="time-badge">⏰ Inicio: ${record.horaInicio}</span>
+                                <span class="time-badge">⏱️ Fin: ${record.horaFin}</span>
+                                ${record.duracion !== 'N/A' ? `<span class="duration-badge">⌚ ${record.duracion} min</span>` : ''}
+                            </div>
+                        </div>
+                        
+                        <div class="record-info">
+                            <div class="info-item">
+                                <div class="info-label">👤 Funcionario</div>
+                                <div class="info-value">${record.nombre}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">🏢 Ubicación</div>
+                                <div class="info-value">${record.piso}</div>
+                            </div>
+                        </div>
+                        
+                        ${trabajos.length > 0 ? `
+                            <div class="work-done">
+                                <div class="info-label">✅ Trabajo Realizado</div>
+                                <ul>
+                                    ${trabajos.map(t => `<li>${t}</li>`).join('')}
+                                </ul>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        function updateStats(records) {
+            const today = new Date().toLocaleDateString('es-ES');
+            const todayRecords = records.filter(r => {
+                const recordDate = new Date(r.fecha).toLocaleDateString('es-ES');
+                return recordDate === today;
+            });
+            
+            const durationsValid = records.filter(r => r.duracion !== 'N/A').map(r => r.duracion);
+            const avgDuration = durationsValid.length > 0 
+                ? Math.round(durationsValid.reduce((a, b) => a + b, 0) / durationsValid.length)
+                : 0;
+            
+            document.getElementById('totalRecords').textContent = records.length;
+            document.getElementById('todayRecords').textContent = todayRecords.length;
+            document.getElementById('avgDuration').textContent = avgDuration;
+            document.getElementById('lastUpdate').textContent = 
+                `Última actualización: ${new Date().toLocaleString('es-ES')}`;
+        }
+        
+        // Cargar datos al inicio
+        loadData();
+        
+        // Recargar cada 2 minutos
+        setInterval(loadData, 120000);
+    </script>
+</body>
+</html>
