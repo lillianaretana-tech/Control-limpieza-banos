@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Limpieza - Piso 1</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -260,7 +261,7 @@
     <script>
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmUpcN4q6d7okxjnMlUuqmzh6rVRJ-rt9Eq7IW-HnK20Vqp2JZ6MKd3_tTaPFPLQ27XgoiZGu4w-HS/pub?gid=1532232990&single=true&output=csv';
         const PISO_FILTRO = 'Piso 1';
-        const AREA_FILTRO = null; // Piso 1 no tiene filtro de área
+        const AREA_FILTRO = null;
         
         function parseTime(timeStr) {
             if (!timeStr) return null;
@@ -270,7 +271,6 @@
             
             let hours = parseInt(match[1]);
             const minutes = parseInt(match[2]);
-            const seconds = parseInt(match[3]);
             const period = match[4].toUpperCase();
             
             if (period === 'PM' && hours !== 12) hours += 12;
@@ -291,58 +291,53 @@
             return duracion;
         }
         
-        function parseCSV(text) {
-            const lines = text.trim().split('\n');
-            const headers = lines[0].split(',');
-            const data = [];
-            
-            for (let i = 1; i < lines.length; i++) {
-                const values = lines[i].split(',');
-                const row = {};
-                headers.forEach((header, index) => {
-                    row[header.trim()] = values[index] ? values[index].trim() : '';
-                });
-                data.push(row);
-            }
-            
-            return data;
-        }
-        
         async function cargarDatos() {
             try {
                 const response = await fetch(CSV_URL);
-                const text = await response.text();
-                const allData = parseCSV(text);
+                const csvText = await response.text();
                 
-                let filteredData = allData.filter(row => {
-                    const pisoMatch = row['En cuál piso?'] === PISO_FILTRO;
-                    return pisoMatch;
+                Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        const allData = results.data;
+                        
+                        let filteredData = allData.filter(row => {
+                            const pisoMatch = row['En cuál piso?'] === PISO_FILTRO;
+                            return pisoMatch;
+                        });
+                        
+                        filteredData.sort((a, b) => new Date(b['Marca temporal']) - new Date(a['Marca temporal']));
+                        
+                        const hoy = new Date().toLocaleDateString('es-ES');
+                        const registrosHoy = filteredData.filter(row => {
+                            const fecha = new Date(row['Marca temporal']).toLocaleDateString('es-ES');
+                            return fecha === hoy;
+                        });
+                        
+                        const duraciones = filteredData
+                            .map(row => calcularDuracion(row['A qué hora empezó a limpiar?'], row['A qué hora TERMINÓ la limpieza?']))
+                            .filter(d => d !== 'N/A' && d > 0);
+                        
+                        const promedio = duraciones.length > 0 
+                            ? Math.round(duraciones.reduce((a, b) => a + b, 0) / duraciones.length)
+                            : 0;
+                        
+                        document.getElementById('totalRegistros').textContent = filteredData.length;
+                        document.getElementById('registrosHoy').textContent = registrosHoy.length;
+                        document.getElementById('promedioTiempo').textContent = promedio;
+                        
+                        mostrarRegistros(filteredData.slice(0, 10));
+                        
+                        document.getElementById('lastUpdate').textContent = 
+                            `Última actualización: ${new Date().toLocaleString('es-ES')}`;
+                    },
+                    error: function(error) {
+                        console.error('Error parsing CSV:', error);
+                        document.getElementById('registros').innerHTML = 
+                            '<div class="error">❌ Error al procesar los datos del CSV.</div>';
+                    }
                 });
-                
-                filteredData.sort((a, b) => new Date(b['Marca temporal']) - new Date(a['Marca temporal']));
-                
-                const hoy = new Date().toLocaleDateString('es-ES');
-                const registrosHoy = filteredData.filter(row => {
-                    const fecha = new Date(row['Marca temporal']).toLocaleDateString('es-ES');
-                    return fecha === hoy;
-                });
-                
-                const duraciones = filteredData
-                    .map(row => calcularDuracion(row['A qué hora empezó a limpiar?'], row['A qué hora TERMINÓ la limpieza?']))
-                    .filter(d => d !== 'N/A' && d > 0);
-                
-                const promedio = duraciones.length > 0 
-                    ? Math.round(duraciones.reduce((a, b) => a + b, 0) / duraciones.length)
-                    : 0;
-                
-                document.getElementById('totalRegistros').textContent = filteredData.length;
-                document.getElementById('registrosHoy').textContent = registrosHoy.length;
-                document.getElementById('promedioTiempo').textContent = promedio;
-                
-                mostrarRegistros(filteredData.slice(0, 10));
-                
-                document.getElementById('lastUpdate').textContent = 
-                    `Última actualización: ${new Date().toLocaleString('es-ES')}`;
                 
             } catch (error) {
                 console.error('Error:', error);
