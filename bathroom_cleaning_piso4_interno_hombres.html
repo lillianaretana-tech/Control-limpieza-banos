@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Limpieza - Piso 4 Interno Hombres</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%); color: white; padding: 30px; text-align: center; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .header .subtitle { font-size: 1.3em; opacity: 0.9; font-weight: 300; }
+        .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; padding: 30px; background: #f7fafc; }
+        .stat-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; transition: transform 0.3s ease; }
+        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 8px 12px rgba(0,0,0,0.15); }
+        .stat-card .icon { font-size: 3em; margin-bottom: 10px; }
+        .stat-card .number { font-size: 3em; font-weight: bold; color: #667eea; margin: 10px 0; }
+        .stat-card .label { font-size: 1.1em; color: #718096; text-transform: uppercase; letter-spacing: 1px; }
+        .records-container { padding: 30px; }
+        .records-title { font-size: 1.8em; color: #2d3748; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid #667eea; }
+        .record-card { background: white; border: 2px solid #e2e8f0; border-radius: 15px; padding: 25px; margin-bottom: 20px; transition: all 0.3s ease; }
+        .record-card:hover { border-color: #667eea; box-shadow: 0 8px 16px rgba(102, 126, 234, 0.2); }
+        .record-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .record-date { font-size: 1.1em; color: #4a5568; font-weight: 600; }
+        .record-employee { font-size: 1.3em; color: #2d3748; font-weight: bold; }
+        .record-location { font-size: 1.1em; color: #667eea; background: #edf2f7; padding: 8px 16px; border-radius: 20px; }
+        .record-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px; }
+        .detail-item { background: #f7fafc; padding: 12px; border-radius: 8px; border-left: 4px solid #667eea; }
+        .detail-label { font-size: 0.85em; color: #718096; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+        .detail-value { font-size: 1.1em; color: #2d3748; font-weight: 600; }
+        .duration-badge { display: inline-block; background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: white; padding: 10px 20px; border-radius: 25px; font-size: 1.2em; font-weight: bold; box-shadow: 0 4px 6px rgba(72, 187, 120, 0.3); }
+        .loading { text-align: center; padding: 60px; font-size: 1.5em; color: #718096; }
+        .error { text-align: center; padding: 60px; font-size: 1.3em; color: #e53e3e; background: #fff5f5; border-radius: 10px; margin: 30px; }
+        .last-update { text-align: center; padding: 15px; color: #718096; font-size: 0.9em; background: #edf2f7; }
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.8em; }
+            .stat-card .number { font-size: 2.5em; }
+            .record-header { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚽 Control de Limpieza</h1>
+            <div class="subtitle">Piso 4 - Interno - Hombres</div>
+        </div>
+        <div class="stats-container">
+            <div class="stat-card"><div class="icon">📊</div><div class="number" id="totalRegistros">0</div><div class="label">Registros</div></div>
+            <div class="stat-card"><div class="icon">📅</div><div class="number" id="registrosHoy">0</div><div class="label">Hoy</div></div>
+            <div class="stat-card"><div class="icon">⏱️</div><div class="number" id="promedioTiempo">0</div><div class="label">Promedio (min)</div></div>
+        </div>
+        <div class="records-container">
+            <h2 class="records-title">📋 Registros Recientes</h2>
+            <div id="registros"><div class="loading">⏳ Cargando datos...</div></div>
+        </div>
+        <div class="last-update" id="lastUpdate"></div>
+    </div>
+    <script>
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmUpcN4q6d7okxjnMlUuqmzh6rVRJ-rt9Eq7IW-HnK20Vqp2JZ6MKd3_tTaPFPLQ27XgoiZGu4w-HS/pub?gid=1532232990&single=true&output=csv';
+        const PISO_FILTRO = 'Piso 4';
+        const AREA_FILTRO = 'Interno';
+        const BANO_FILTRO = 'Baño de hombres';
+        
+        function findColumn(row, keywords) {
+            for (let key of Object.keys(row)) {
+                for (let keyword of keywords) {
+                    if (key.toLowerCase().includes(keyword.toLowerCase())) {
+                        return row[key];
+                    }
+                }
+            }
+            return '';
+        }
+        
+        function parseTime(timeStr) {
+            if (!timeStr) return null;
+            const match = timeStr.match(/(\d+):(\d+):(\d+)\s*(AM|PM)/i);
+            if (!match) return null;
+            let hours = parseInt(match[1]);
+            const minutes = parseInt(match[2]);
+            const period = match[4].toUpperCase();
+            if (period === 'PM' && hours !== 12) hours += 12;
+            if (period === 'AM' && hours === 12) hours = 0;
+            return hours * 60 + minutes;
+        }
+        
+        function calcularDuracion(inicio, fin) {
+            const minutosInicio = parseTime(inicio);
+            const minutosFin = parseTime(fin);
+            if (minutosInicio === null || minutosFin === null) return 'N/A';
+            let duracion = minutosFin - minutosInicio;
+            if (duracion < 0) duracion += 24 * 60;
+            return duracion;
+        }
+        
+        async function cargarDatos() {
+            try {
+                const response = await fetch(CSV_URL);
+                const csvText = await response.text();
+                
+                Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        const allData = results.data;
+                        
+                        let filteredData = allData.filter(row => {
+                            const piso = findColumn(row, ['piso?', 'cual piso']);
+                            const area = findColumn(row, ['área específica', 'area especifica']);
+                            const bano = findColumn(row, ['baño', 'cual baño']);
+                            const pisoMatch = piso === PISO_FILTRO || piso.includes(PISO_FILTRO);
+                            const areaMatch = area.includes(AREA_FILTRO);
+                            const banoMatch = bano.includes(BANO_FILTRO);
+                            return pisoMatch && areaMatch && banoMatch;
+                        });
+                        
+                        filteredData.sort((a, b) => {
+                            const dateA = new Date(findColumn(a, ['timestamp', 'marca temporal']));
+                            const dateB = new Date(findColumn(b, ['timestamp', 'marca temporal']));
+                            return dateB - dateA;
+                        });
+                        
+                        const hoy = new Date().toLocaleDateString('es-ES');
+                        const registrosHoy = filteredData.filter(row => {
+                            const fecha = new Date(findColumn(row, ['timestamp', 'marca temporal'])).toLocaleDateString('es-ES');
+                            return fecha === hoy;
+                        });
+                        
+                        const duraciones = filteredData.map(row => {
+                            const inicio = findColumn(row, ['empezó', 'empezo', 'hora empez']);
+                            const fin = findColumn(row, ['terminó', 'termino', 'hora termin']);
+                            return calcularDuracion(inicio, fin);
+                        }).filter(d => d !== 'N/A' && d > 0);
+                        
+                        const promedio = duraciones.length > 0 ? Math.round(duraciones.reduce((a, b) => a + b, 0) / duraciones.length) : 0;
+                        
+                        document.getElementById('totalRegistros').textContent = filteredData.length;
+                        document.getElementById('registrosHoy').textContent = registrosHoy.length;
+                        document.getElementById('promedioTiempo').textContent = promedio;
+                        
+                        mostrarRegistros(filteredData.slice(0, 10));
+                        document.getElementById('lastUpdate').textContent = `Última actualización: ${new Date().toLocaleString('es-ES')}`;
+                    }
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('registros').innerHTML = '<div class="error">❌ Error al cargar los datos.</div>';
+            }
+        }
+        
+        function mostrarRegistros(data) {
+            const container = document.getElementById('registros');
+            if (data.length === 0) {
+                container.innerHTML = '<div class="loading">📭 No hay registros para esta ubicación.</div>';
+                return;
+            }
+            container.innerHTML = data.map(row => {
+                const fecha = new Date(findColumn(row, ['timestamp', 'marca temporal'])).toLocaleDateString('es-ES');
+                const nombre = findColumn(row, ['nombre', 'escoja su nombre']);
+                const piso = findColumn(row, ['piso?', 'cual piso']);
+                const area = findColumn(row, ['área específica', 'area especifica']);
+                const bano = findColumn(row, ['baño', 'cual baño']);
+                const inicio = findColumn(row, ['empezó', 'empezo', 'hora empez']);
+                const fin = findColumn(row, ['terminó', 'termino', 'hora termin']);
+                const trabajo = findColumn(row, ['trabajo', 'realizó', 'marque todo']);
+                const duracion = calcularDuracion(inicio, fin);
+                
+                return `<div class="record-card"><div class="record-header"><div class="record-date">📅 ${fecha}</div><div class="record-employee">👤 ${nombre || 'N/A'}</div><div class="record-location">🏢 ${piso} - ${area} - ${bano}</div></div><div class="record-details"><div class="detail-item"><div class="detail-label">Inicio</div><div class="detail-value">🕐 ${inicio || 'N/A'}</div></div><div class="detail-item"><div class="detail-label">Fin</div><div class="detail-value">🕐 ${fin || 'N/A'}</div></div><div class="detail-item"><div class="detail-label">Duración</div><div class="detail-value"><span class="duration-badge">⏱️ ${duracion !== 'N/A' ? duracion + ' min' : 'N/A'}</span></div></div><div class="detail-item"><div class="detail-label">Trabajo Realizado</div><div class="detail-value" style="font-size: 0.95em; line-height: 1.4;">${(trabajo || 'N/A').substring(0, 100)}${trabajo && trabajo.length > 100 ? '...' : ''}</div></div></div></div>`;
+            }).join('');
+        }
+        
+        cargarDatos();
+        setInterval(cargarDatos, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
