@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Limpieza - Piso 3 - Externo</title>
+    <title>Control de Limpieza - Piso 3 Interno Hombres</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -45,7 +45,7 @@
     <div class="container">
         <div class="header">
             <h1>🚽 Control de Limpieza</h1>
-            <div class="subtitle">Piso 3 - Externo</div>
+            <div class="subtitle">Piso 3 - Interno - Hombres</div>
         </div>
         <div class="stats-container">
             <div class="stat-card"><div class="icon">📊</div><div class="number" id="totalRegistros">0</div><div class="label">Registros</div></div>
@@ -61,7 +61,8 @@
     <script>
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmUpcN4q6d7okxjnMlUuqmzh6rVRJ-rt9Eq7IW-HnK20Vqp2JZ6MKd3_tTaPFPLQ27XgoiZGu4w-HS/pub?gid=1532232990&single=true&output=csv';
         const PISO_FILTRO = 'Piso 3';
-        const AREA_FILTRO = 'Externo';
+        const AREA_FILTRO = 'Interno';
+        const BANO_FILTRO = 'Baño de hombres';
         
         function findColumn(row, keywords) {
             for (let key of Object.keys(row)) {
@@ -109,10 +110,12 @@
                         let filteredData = allData.filter(row => {
                             const piso = findColumn(row, ['piso?', 'cual piso']);
                             const area = findColumn(row, ['área específica', 'area especifica']);
+                            const bano = findColumn(row, ['baño', 'cual baño']);
                             const pisoMatch = piso === PISO_FILTRO || piso.includes(PISO_FILTRO);
                             const areaMatch = area.includes(AREA_FILTRO);
-                            return pisoMatch && areaMatch;
-                        });;
+                            const banoMatch = bano.includes(BANO_FILTRO);
+                            return pisoMatch && areaMatch && banoMatch;
+                        });
                         
                         filteredData.sort((a, b) => {
                             const dateA = new Date(findColumn(a, ['timestamp', 'marca temporal']));
@@ -151,23 +154,21 @@
         function mostrarRegistros(data) {
             const container = document.getElementById('registros');
             if (data.length === 0) {
-                container.innerHTML = '<div class="loading">📭 No hay registros para este piso.</div>';
+                container.innerHTML = '<div class="loading">📭 No hay registros para esta ubicación.</div>';
                 return;
             }
             container.innerHTML = data.map(row => {
                 const fecha = new Date(findColumn(row, ['timestamp', 'marca temporal'])).toLocaleDateString('es-ES');
                 const nombre = findColumn(row, ['nombre', 'escoja su nombre']);
                 const piso = findColumn(row, ['piso?', 'cual piso']);
+                const area = findColumn(row, ['área específica', 'area especifica']);
+                const bano = findColumn(row, ['baño', 'cual baño']);
                 const inicio = findColumn(row, ['empezó', 'empezo', 'hora empez']);
                 const fin = findColumn(row, ['terminó', 'termino', 'hora termin']);
+                const trabajo = findColumn(row, ['trabajo', 'realizó', 'marque todo']);
                 const duracion = calcularDuracion(inicio, fin);
                 
-                return `<div class="record-card"><div class="record-header"><div class="record-date">📅 ${fecha}</div><div class="record-employee">👤 ${nombre || 'N/A'}</div><div class="record-location">🏢 ${piso}</div></div><div class="record-details"><div class="detail-item"><div class="detail-label">Inicio</div><div class="detail-value">🕐 ${inicio || 'N/A'}</div></div><div class="detail-item"><div class="detail-label">Fin</div><div class="detail-value">🕐 ${fin || 'N/A'}</div></div><div class="detail-item"><div class="detail-label">Duración</div><div class="detail-value"><span class="duration-badge">⏱️ ${duracion !== 'N/A' ? duracion + ' min' : 'N/A'}</span></div></div></div></div><div class="detail-item">
-    <div class="detail-label">Trabajo Realizado</div>
-    <div class="detail-value" style="font-size: 0.95em; line-height: 1.4;">
-        ${(findColumn(row, ['trabajo', 'realizó', 'marque todo']) || 'N/A').substring(0, 100)}${(findColumn(row, ['trabajo', 'realizó', 'marque todo']) || '').length > 100 ? '...' : ''}
-    </div>
-</div>`;
+                return `<div class="record-card"><div class="record-header"><div class="record-date">📅 ${fecha}</div><div class="record-employee">👤 ${nombre || 'N/A'}</div><div class="record-location">🏢 ${piso} - ${area} - ${bano}</div></div><div class="record-details"><div class="detail-item"><div class="detail-label">Inicio</div><div class="detail-value">🕐 ${inicio || 'N/A'}</div></div><div class="detail-item"><div class="detail-label">Fin</div><div class="detail-value">🕐 ${fin || 'N/A'}</div></div><div class="detail-item"><div class="detail-label">Duración</div><div class="detail-value"><span class="duration-badge">⏱️ ${duracion !== 'N/A' ? duracion + ' min' : 'N/A'}</span></div></div><div class="detail-item"><div class="detail-label">Trabajo Realizado</div><div class="detail-value" style="font-size: 0.95em; line-height: 1.4;">${(trabajo || 'N/A').substring(0, 100)}${trabajo && trabajo.length > 100 ? '...' : ''}</div></div></div></div>`;
             }).join('');
         }
         
